@@ -7,6 +7,7 @@ import numpy as np
 import streamlit as st
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
+import math
 
 
 st.set_page_config(layout="wide", page_title='Disaster influence on economy', initial_sidebar_state='expanded')
@@ -36,7 +37,8 @@ df = countries_geojson.merge(GDP, left_on='ISO_A3', right_on='Country Code', how
 rampen_df = pd.read_csv('rampen_df.csv')
 
 if pages == 'Home':
-    st.markdown('Gemaakt door Bart Sil Combee')
+    st.subheader('Gemaakt door Bart Sil Combee')
+    st.markdown('Visual Analytics Final project, November 2022')
     st.image('disasters.png')
     
     
@@ -51,7 +53,7 @@ if pages == 'Sources':
 
 if pages == 'General code':
     st.title('General Code')
-    st.markdown("Data retrieved via API's")
+    st.markdown("Data retrieved via API's.")
     st.code("response = requests.get('https://api.worldbank.org/v2/en/indicator/NY.GDP.MKTP.CD?downloadformat=excel') \n\
 output = open('GDP.xls', 'wb')\n\
 output.write(response.content)\n\
@@ -114,16 +116,6 @@ test2.columns = ['Year','ISO','Country','Disaster Group','Disaster Subgroup','Di
 ''', language='python')
     st.code('''rampen_df['Category Types'] = test2['Category Types']
 rampen_df = rampen_df.sort_values(by='Year').reset_index(drop=True)''', language='python')
-    
-
-    
-
-   
-    
-    
-    
-    
-    
     
     
 if pages== 'Map' or pages == 'Economic change' or pages == 'Comparison disasters' or pages == 'The Big 4':
@@ -198,9 +190,7 @@ if pages== 'Map' or pages == 'Economic change' or pages == 'Comparison disasters
             type_dict = dict(zip(types, type_names))
             type_box=st.selectbox('Choose a subtype', types)
         if pages == 'The Big 4':
-            categories = ['Categorie 1', 'Categorie 2', 'Categorie 3']
-            category= ['Category 1', 'Category 2', 'Category 3']
-            category_dict = dict(zip(categories, category))
+            categories = ['Category 1', 'Category 2', 'Category 3']
             category_box = st.selectbox('Choose a disaster category', categories)
   
                
@@ -231,6 +221,8 @@ if pages == 'Map':
 
     map = px.choropleth_mapbox(df_adjusted, geojson=df_adjusted.geometry, locations=df_adjusted.index, color=jaar, mapbox_style="open-street-map",
                           hover_name=df_adjusted.Country, zoom=1, height=800)
+    map.update_layout(
+        title_text="""<b>Highest disaster intensity for each country in """+str(jaar) +"""</b>""", title_x=0.5)
     st.plotly_chart(map, use_container_width=True)
     
     st.title('Map specific code')
@@ -238,9 +230,10 @@ if pages == 'Map':
     st.code('''if pages == 'Map':
     Soort_data = st.selectbox('Select data type', ['Intensity', 'Affected'])''', language='python')
     st.markdown('')
-    st.markdown('Filtered the dataset based on the selectbox choice. Intensity used max value, Affected used sum.')
-    st.code('''rampen_df_intensity = rampen_df.groupby(['ISO', 'Country', 'Year'])['Intensity'].max().to_frame().reset_index()''', language='python')
-    st.markdown('Pivot data and remove NaN values.')
+    st.markdown('Filtered the dataset based on the selectbox choice.')
+    st.code('''rampen_df_intensity = rampen_df.groupby(['ISO', 'Country', 'Year'])['Intensity'].max().to_frame().reset_index()
+rampen_df_affected = rampen_df.groupby(['ISO', 'Country', 'Year'])['Total Affected new'].sum().to_frame().reset_index()''', language='python')
+    st.markdown('Pivot data and rplace NaN values with 0.')
     st.code('''rampen_df_intensity = rampen_df_intensity.pivot_table(index=['ISO', 'Country'], columns='Year', values='Intensity').reset_index()
 rampen_df_intensity.index.name = rampen_df_intensity.columns.name = None
 rampen_df_intensity = rampen_df_intensity.fillna(0)''', language='python')
@@ -306,10 +299,11 @@ if pages == 'Economic change':
         go.Line(x=GDP_grafiek['Year'].to_list(), y=GDP_grafiek[land_code].to_list(), name=landen_box),
         secondary_y=False)
     GDP_fig.update_layout(
-        title_text="<b>GDP comparison of world vs. " + landen_box +'</b>')
+        title_text="<b>GDP comparison of world vs. " + landen_box +'</b>', title_x=0.2)
     GDP_fig.update_xaxes(title_text="<b>2 years before and 5 years after chosen year</b>")
-    GDP_fig.update_yaxes(title_text='<b>GDP ' + landen_box + '</b>', secondary_y=False)
-    GDP_fig.update_yaxes(title_text='<b>GDP world</b>', secondary_y=True)
+    GDP_fig.update_yaxes(title_text='<b>GDP ' + landen_box + ' in USD</b>', secondary_y=False)
+    GDP_fig.update_yaxes(title_text='<b>GDP world in USD</b>', secondary_y=True)
+    
     with col7:
         st.plotly_chart(GDP_fig)
     
@@ -320,18 +314,18 @@ if pages == 'Economic change':
     scatter_graph = px.scatter(x=scatter_df['Year'], y=scatter_df['Intensity'])
     scatter_graph.update_traces(marker=dict(size=12, color='Red'))
     scatter_graph.update_layout(xaxis_range=[grafiek_min_jaar-0.25,grafiek_max_jaar+0.25],
-                               yaxis_range=[-0.05,0.5])
+                               yaxis_range=[-0.05,math.ceil(rampen_df['Intensity'].max()*10)/10])
     scatter_graph.update_xaxes(title_text="<b>2 years before and 5 years after chosen year</b>")
     scatter_graph.update_yaxes(title_text="<b>Intensity of disasters within year range</b>")
-    scatter_graph.update_layout(title = 'Disaster occurences')
+    scatter_graph.update_layout(title = '<b>Disaster occurences</b>', title_x=0.5)
 
     with col8:
         st.plotly_chart(scatter_graph)
         
     percentage_fig = px.line(GDP_land, x='Year', y='Percent')
     percentage_fig.update_xaxes(title_text="<b>2 years before and 5 years after chosen year</b>")
-    percentage_fig.update_yaxes(title_text="Percentage")
-    percentage_fig.update_layout(title="<b>Difference in growth percentage of " + landen_box + ' compared to the world</b>')
+    percentage_fig.update_yaxes(title_text="<b>Percentage</b>")
+    percentage_fig.update_layout(title="<b>Difference in growth percentage of " + landen_box + ' compared to the world</b>', title_x=0.5)
     percentage_fig.add_hline(y=0)
     with col6:
         st.plotly_chart(percentage_fig)
@@ -379,7 +373,7 @@ GDP_land2 = GDP_grafiek2[['Year', land_code, 'WLD']].reset_index(drop=True)
 
 GDP_land['Percent'] = 0
 for index, row in GDP_land.iterrows():
-    GDP_land['Percent'].iloc[index] = (GDP_land2[land_code].iloc[index+1]-GDP_land2[land_code].iloc[index])/GDP_land2[land_code].iloc[index]-\
+    GDP_land['Percent'].iloc[index] = (GDP_land2[land_code].iloc[index+1]-GDP_land2[land_code].iloc[index])/GDP_land2[land_code].iloc[index]-\\
     (GDP_land2['WLD'].iloc[index+1]-GDP_land2['WLD'].iloc[index])/GDP_land2['WLD'].iloc[index]
 GDP_land['Percent'] = GDP_land['Percent']*100""", language='python')
 
@@ -442,17 +436,17 @@ data_subtypes_jaar_2 = data_subtypes[data_subtypes['Jaar 2']!=0].sort_values(by=
 data_subtypes_jaar_3 = data_subtypes[data_subtypes['Jaar 3']!=0].sort_values(by='Category Subtypes')""", language='python')
 
 if pages == 'The Big 4':
-    if category_dict[category_box] == 'Category 1':
+    if category_box == 'Category 1':
         Category_data = rampen_df[(rampen_df['Category Types']==1)]
         Category_data = Category_data[(Category_data['Disaster Type']=='Drought') | (Category_data['Disaster Type']=='Flood') | (Category_data['Disaster Type']=='Storm') | (Category_data['Disaster Type']=='Earthquake')]
         Category_data = Category_data.dropna(axis=0)
         Category_data = Category_data.sort_values(by='Disaster Type').reset_index(drop=True)
-    elif category_dict[category_box] == 'Category 2':
+    elif category_box == 'Category 2':
         Category_data = rampen_df[(rampen_df['Category Types']==2)]
         Category_data = Category_data[(Category_data['Disaster Type']=='Drought') | (Category_data['Disaster Type']=='Flood') | (Category_data['Disaster Type']=='Storm') | (Category_data['Disaster Type']=='Earthquake')]
         Category_data = Category_data.dropna(axis=0)
         Category_data = Category_data.sort_values(by='Disaster Type').reset_index(drop=True)
-    elif category_dict[category_box] == 'Category 3':
+    elif category_box == 'Category 3':
         Category_data = rampen_df[(rampen_df['Category Types']==3)]
         Category_data = Category_data[(Category_data['Disaster Type']=='Drought') | (Category_data['Disaster Type']=='Flood') | (Category_data['Disaster Type']=='Storm') | (Category_data['Disaster Type']=='Earthquake')]
         Category_data = Category_data.dropna(axis=0)
@@ -460,12 +454,24 @@ if pages == 'The Big 4':
     
     Category_data = Category_data[Category_data['Jaar 0']!=0]
     fig_a2 = px.box(Category_data, x='Disaster Type', y='Jaar 0', color='Disaster Type')
+    fig_a2.update_layout(title='<b>Year of disaster</b>', title_x=0.48)
+    fig_a2.update_xaxes(title='<b>Disaster Type</b>')
+    fig_a2.update_yaxes(title='<b>Percentage difference between country and world<b>')
     Category_data = Category_data[Category_data['Jaar 1']!=0]
     fig_b2 = px.box(Category_data, x='Disaster Type', y='Jaar 1', color='Disaster Type')
+    fig_b2.update_layout(title='<b>One year after disaster</b>', title_x=0.48)
+    fig_b2.update_xaxes(title='<b>Disaster Type</b>')
+    fig_b2.update_yaxes(title='<b>Percentage difference between country and world<b>')
     Category_data = Category_data[Category_data['Jaar 2']!=0]
     fig_c2 = px.box(Category_data, x='Disaster Type', y='Jaar 2', color='Disaster Type')
+    fig_c2.update_layout(title='<b>Two years after disaster</b>', title_x=0.48)
+    fig_c2.update_xaxes(title='<b>Disaster Type</b>')
+    fig_c2.update_yaxes(title='<b>Percentage difference between country and world<b>')
     Category_data = Category_data[Category_data['Jaar 3']!=0]
     fig_d2 = px.box(Category_data, x='Disaster Type', y='Jaar 3', color='Disaster Type')
+    fig_d2.update_layout(title='<b>Three years after disaster</b>', title_x=0.48)
+    fig_d2.update_xaxes(title='<b>Disaster Type</b>')
+    fig_d2.update_yaxes(title='<b>Percentage difference between country and world<b>')
     
     col1, col2 = st.columns([1,1])
     with col1:
