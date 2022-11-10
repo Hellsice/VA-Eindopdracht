@@ -80,12 +80,13 @@ GDP[GDP['Country Code']=='WLD'][str(rampen_df['Year'][index])].values[0]''', lan
     st.markdown('')
     st.markdown("Making a submit button that's shared across different pages.")
     st.markdown('note, all code after this point is part of the button.')
-    st.code('''with st.form(key='my_form'):
-    commit = st.form_submit_button('Submit')
-    Total_affected_mult = st.slider('Set the total affected multiplier',min_value=0.0, value=0.3 ,max_value=1.0, step=0.01)
-    Intensity_threshold = st.number_input('Set the intensity threshold (default: 0.00001)', min_value=0.0, value=0.00001, max_value=1.0, step=0.00001)
-    if pages == 'Map' or pages == 'Economic change':
-        jaar = st.slider('Select year',min_value=1961, value=2018 ,max_value=2018)''',language='python')
+    st.code('''if pages== 'Map' or pages == 'Economic change' or pages == 'Comparison disasters' or pages == 'The Big 4':
+    with st.form(key='my_form'):
+        commit = st.form_submit_button('Submit')
+        Total_affected_mult = st.slider('Set the total affected multiplier',min_value=0.0, value=0.3 ,max_value=1.0, step=0.01)
+        Intensity_threshold = st.number_input('Set the intensity threshold (default: 0.00001)', min_value=0.0, value=0.00001, max_value=1.0, step=0.00001)
+        if pages == 'Map' or pages == 'Economic change':
+            jaar = st.slider('Select year',min_value=1961, value=2018 ,max_value=2018)''',language='python')
     st.markdown('')
     st.markdown('Calculating intensity using the following formula:')
     st.markdown(r'''
@@ -387,17 +388,17 @@ if pages == 'Comparison disasters':
     data_subtypes_jaar_3 = data_subtypes[data_subtypes['Jaar 3']!=0].sort_values(by='Category Subtypes')
     
     Fig_subtypes_jaar0 = px.box(data_subtypes_jaar_0, x='Category Subtypes', y='Jaar 0', color='Category Subtypes')
-    Fig_subtypes_jaar0.update_layout(title='<b>'+data_subtypes['Disaster Subtype'][0] + ': Jaar 0</b>')
-    Fig_subtypes_jaar0.update_yaxes(title = '<b>GDP change compared to world</b>')
-    Fig_subtypes_jaar0.update_xaxes(title = '<b>Category</b>')
+    Fig_subtypes_jaar0.update_layout(title='<b>Year of disaster</b>', title_x=0.48)
+    Fig_subtypes_jaar0.update_xaxes(title='<b>Category</b>')
+    Fig_subtypes_jaar0.update_yaxes(title='<b>GDP change compared to world (in percentage)<b>')
     
     with col3:
         st.plotly_chart(Fig_subtypes_jaar0)
     
     
     Fig_subtypes_jaar1 = px.box(data_subtypes_jaar_1, x='Category Subtypes', y='Jaar 1', color='Category Subtypes')
-    Fig_subtypes_jaar1.update_layout(title='<b>'+data_subtypes['Disaster Subtype'][0] + ': Jaar 1</b>')
-    Fig_subtypes_jaar1.update_yaxes(title = '<b>GDP change compared to world</b>')
+    Fig_subtypes_jaar1.update_layout(title='<b>One year after disaster</b>', title_x=0.48)
+    Fig_subtypes_jaar1.update_yaxes(title = '<b>GDP change compared to world (in percentage)</b>')
     Fig_subtypes_jaar1.update_xaxes(title = '<b>Category</b>')
     
     with col4:
@@ -405,7 +406,7 @@ if pages == 'Comparison disasters':
     
     
     Fig_subtypes_jaar2 = px.box(data_subtypes_jaar_2, x='Category Subtypes', y='Jaar 2', color='Category Subtypes')
-    Fig_subtypes_jaar2.update_layout(title='<b>'+data_subtypes['Disaster Subtype'][0] + ': Jaar 2</b>')
+    Fig_subtypes_jaar2.update_layout(title='<b>Two years after disaster</b>', title_x=0.48)
     Fig_subtypes_jaar2.update_yaxes(title = '<b>GDP change compared to world</b>')
     Fig_subtypes_jaar2.update_xaxes(title = '<b>Category</b>')
     
@@ -414,7 +415,7 @@ if pages == 'Comparison disasters':
     
     
     Fig_subtypes_jaar3 = px.box(data_subtypes_jaar_3, x='Category Subtypes', y='Jaar 3', color='Category Subtypes')
-    Fig_subtypes_jaar3.update_layout(title='<b>'+data_subtypes['Disaster Subtype'][0] + ': Jaar 3</b>')
+    Fig_subtypes_jaar3.update_layout(title='<b>Three years after disaster</b>', title_x=0.48)
     Fig_subtypes_jaar3.update_yaxes(title = '<b>GDP change compared to world</b>')
     Fig_subtypes_jaar3.update_xaxes(title = '<b>Category</b>')
     
@@ -456,22 +457,22 @@ if pages == 'The Big 4':
     fig_a2 = px.box(Category_data, x='Disaster Type', y='Jaar 0', color='Disaster Type')
     fig_a2.update_layout(title='<b>Year of disaster</b>', title_x=0.48)
     fig_a2.update_xaxes(title='<b>Disaster Type</b>')
-    fig_a2.update_yaxes(title='<b>Percentage difference between country and world<b>')
+    fig_a2.update_yaxes(title='<b>GDP change compared to world (in percentage)<b>')
     Category_data = Category_data[Category_data['Jaar 1']!=0]
     fig_b2 = px.box(Category_data, x='Disaster Type', y='Jaar 1', color='Disaster Type')
     fig_b2.update_layout(title='<b>One year after disaster</b>', title_x=0.48)
     fig_b2.update_xaxes(title='<b>Disaster Type</b>')
-    fig_b2.update_yaxes(title='<b>Percentage difference between country and world<b>')
+    fig_b2.update_yaxes(title='<b>GDP change compared to world (in percentage)<b>')
     Category_data = Category_data[Category_data['Jaar 2']!=0]
     fig_c2 = px.box(Category_data, x='Disaster Type', y='Jaar 2', color='Disaster Type')
     fig_c2.update_layout(title='<b>Two years after disaster</b>', title_x=0.48)
     fig_c2.update_xaxes(title='<b>Disaster Type</b>')
-    fig_c2.update_yaxes(title='<b>Percentage difference between country and world<b>')
+    fig_c2.update_yaxes(title='<b>GDP change compared to world (in percentage)<b>')
     Category_data = Category_data[Category_data['Jaar 3']!=0]
     fig_d2 = px.box(Category_data, x='Disaster Type', y='Jaar 3', color='Disaster Type')
     fig_d2.update_layout(title='<b>Three years after disaster</b>', title_x=0.48)
     fig_d2.update_xaxes(title='<b>Disaster Type</b>')
-    fig_d2.update_yaxes(title='<b>Percentage difference between country and world<b>')
+    fig_d2.update_yaxes(title='<b>GDP change compared to world (in percentage)b>')
     
     col1, col2 = st.columns([1,1])
     with col1:
