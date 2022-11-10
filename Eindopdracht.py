@@ -12,7 +12,7 @@ import plotly.graph_objects as go
 st.set_page_config(layout="wide", page_title='Disaster influence on economy', initial_sidebar_state='expanded')
 st.title('Disaster influence on economy')
 st.sidebar.title('Navigation')
-pages = st.sidebar.radio('Pages', options=['Home', 'Data cleaning', 'Map', 'Economic change', 'Comparison disasters', 'The Big 4'])
+pages = st.sidebar.radio('Pages', options=['Home', 'Data cleaning', 'Map', 'Economic change', 'Comparison disasters', 'The Big 4', 'Sources'])
 
 od.download('https://datahub.io/core/geo-countries/r/countries.geojson')
 countries_geojson = gpd.read_file('countries.geojson')
@@ -38,17 +38,59 @@ rampen_df = pd.read_csv('rampen_df.csv')
 if pages == 'Home':
     st.markdown('Gemaakt door Bart Sil Combee')
     st.image('disasters.png')
+    
+    
+if pages == 'Sources':
+    st.markdown('Data sources:')
+    st.markdown('Population: worldbank.org, https://data.worldbank.org/indicator/NY.GDP.MKTP.CD')
+    st.markdown('GDP: worldbank.org, https://data.worldbank.org/indicator/SP.POP.TOTL')
+    st.markdown('Disaster Data: EMDAT-public, https://public.emdat.be/data')
+    st.markdown('Geodata: datahub, https://datahub.io/core/geo-countries')
+    st.markdown('Formula for Intensity: "The Growth Aftermath of Natural Disasters" by Thomas Fomby, Yuki Ikeda and Norman Loayza')
 
 
+if pages == 'Data cleaning':
+    st.markdown("Data retrieved via API's")
+    st.code("response = requests.get('https://api.worldbank.org/v2/en/indicator/NY.GDP.MKTP.CD?downloadformat=excel') \n\
+output = open('GDP.xls', 'wb')\n\
+output.write(response.content)\n\
+output.close()", language='python')
+    st.markdown('')
+    st.markdown('Cleaning disaster data')
+    st.markdown('filtered by year')
+    st.code('rampen_df = rampen_df[rampen_df.Year >= 1961].reset_index(drop=True).fillna(0)\n\
+rampen_df = rampen_df[rampen_df.Year <= 2021].reset_index(drop=True).fillna(0)', language='python')
+    st.markdown('')
+    st.markdown('recalculated Deaths and total affected')
+    st.code("rampen_df['Total Affected new'] = rampen_df['No Affected']+rampen_df['No Injured']+rampen_df['No Homeless']\n\
+rampen_df_controle = rampen_df.groupby(['ISO', 'Country', 'Year', 'Disaster Group', 'Disaster Subgroup', 'Disaster Type',\n\
+       'Disaster Subtype'])['Total Affected new'].sum().reset_index()\n\
+rampen_df_controle2 = rampen_df.groupby(['ISO', 'Country', 'Year', 'Disaster Group', 'Disaster Subgroup', 'Disaster Type',\n\
+       'Disaster Subtype'])['Total Deaths'].sum().reset_index()", language='python')
+    st.markdown('')
+    st.markdown('Determined GDP% change compared to the world')
+    st.code("rampen_df.iloc[index, rampen_df.columns.get_loc('Jaar 0')] = \n\
+    (GDP[GDP['Country Code']==rampen_df['ISO'][index]][str(rampen_df['Year'][index])].values[0] - GDP[GDP['Country Code']==rampen_df['ISO'][index]][str(rampen_df['Year'][index]-1)].values[0])/\n\
+            GDP[GDP['Country Code']==rampen_df['ISO'][index]][str(rampen_df['Year'][index]-1)].values[0]\n\
+    - (GDP[GDP['Country Code']=='WLD'][str(rampen_df['Year'][index])].values[0] - GDP[GDP['Country Code']=='WLD'][str(rampen_df['Year'][index]-1)].values[0])/\n\
+            GDP[GDP['Country Code']=='WLD'][str(rampen_df['Year'][index]-1)].values[0]", language='python')
+    st.markdown('')
+    st.markdown()
 
-
-
+    
+    
+    
+    
+    
+    
+    
 if pages== 'Map' or pages == 'Economic change' or pages == 'Comparison disasters' or pages == 'The Big 4':
     with st.form(key='my_form'):
         commit = st.form_submit_button('Submit')
         Total_affected_mult = st.slider('Set the total affected multiplier',min_value=0.0, value=0.3 ,max_value=1.0, step=0.01)
         Intensity_threshold = st.number_input('Set the intensity threshold (default: 0.00001)', min_value=0.0, value=0.00001, max_value=1.0, step=0.00001)
-        jaar = st.slider('Select year',min_value=1961, value=2018 ,max_value=2018)
+        if pages == 'Map' or pages == 'Economic change':
+            jaar = st.slider('Select year',min_value=1961, value=2018 ,max_value=2018)
         
         
         round_mult = 100000
@@ -113,8 +155,6 @@ if pages== 'Map' or pages == 'Economic change' or pages == 'Comparison disasters
             type_names = list(rampen_df['Disaster Subtype'].unique())
             type_dict = dict(zip(types, type_names))
             type_box=st.selectbox('Choose a subtype', types)
-            
-            Outlier_box = st.selectbox('Remove outliers', ['No', 'Yes'])
         if pages == 'The Big 4':
             categories = ['Categorie 1', 'Categorie 2', 'Categorie 3']
             category= ['Category 1', 'Category 2', 'Category 3']
@@ -153,7 +193,7 @@ if pages == 'Map':
 
 
 if pages == 'Economic change':
-    col5, col6 = st.columns([1,1])
+    col5, col6 = st.columns([2,2])
     land = landen_box
     check = rampen_df[rampen_df['Country']==landen_box]
     check = check[check['Year']==jaar]
@@ -182,12 +222,24 @@ if pages == 'Economic change':
     
     grafiek_max_jaar = jaar+5
     grafiek_min_jaar = jaar-2
+    grafiek_percent_jaar = jaar-3
+        
     GDP_grafiek = GDP.drop(['Country Name', 'Indicator Name', 'Indicator Code'], axis=1)
     GDP_grafiek = GDP_grafiek.set_index('Country Code').T.rename(pd.to_numeric).reset_index()
+    GDP_grafiek2 = GDP_grafiek[(GDP_grafiek['index']>=grafiek_percent_jaar) & (GDP_grafiek['index']<=grafiek_max_jaar)]
     GDP_grafiek = GDP_grafiek[(GDP_grafiek['index']>=grafiek_min_jaar) & (GDP_grafiek['index']<=grafiek_max_jaar)]
+
     GDP_grafiek = GDP_grafiek.rename(columns={'index':'Year'}, index={'Country Code':'Index'})
-    GDP_land = GDP_grafiek[['Year', land_code, 'WLD']]
-    with col5:
+    GDP_grafiek2 = GDP_grafiek2.rename(columns={'index':'Year'}, index={'Country Code':'Index'})
+    GDP_land = GDP_grafiek[['Year', land_code, 'WLD']].reset_index(drop=True)
+    GDP_land2 = GDP_grafiek2[['Year', land_code, 'WLD']].reset_index(drop=True)
+
+    GDP_land['percent'] = 0
+    for index, row in GDP_land.iterrows():
+        GDP_land['percent'].iloc[index] = (GDP_land2[land_code].iloc[index+1]-GDP_land2[land_code].iloc[index])/GDP_land2[land_code].iloc[index]-\
+        (GDP_land2['WLD'].iloc[index+1]-GDP_land2['WLD'].iloc[index])/GDP_land2['WLD'].iloc[index]
+        
+    with col6:
         GDP_land
 
     GDP_fig = make_subplots(specs=[[{"secondary_y": True}]])
@@ -202,8 +254,17 @@ if pages == 'Economic change':
     GDP_fig.update_xaxes(title_text="<b>2 years before and 5 years after chosen year</b>")
     GDP_fig.update_yaxes(title_text='<b>GDP ' + landen_box + '</b>', secondary_y=False)
     GDP_fig.update_yaxes(title_text='<b>GDP world</b>', secondary_y=True)
-    with col6:
+    with col5:
         st.plotly_chart(GDP_fig)
+    
+   
+    #scatter
+    scatter_df = rampen_df[rampen_df['ISO']==land_code]
+    scatter_df = scatter_df[(scatter_df['Year']>=grafiek_min_jaar) & (scatter_df['Year']<=grafiek_max_jaar)]
+    scatter_graph = px.scatter(x=scatter_df['Year'], y=scatter_df['Intensity'])
+    scatter_graph.update_traces(marker=dict(size=12, color='Red'))
+    with col6:
+        st.plotly_chart(scatter_graph)
 
 
 
