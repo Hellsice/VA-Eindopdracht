@@ -12,7 +12,7 @@ import plotly.graph_objects as go
 st.set_page_config(layout="wide", page_title='Disaster influence on economy', initial_sidebar_state='expanded')
 st.title('Disaster influence on economy')
 st.sidebar.title('Navigation')
-pages = st.sidebar.radio('Pages', options=['Home', 'Data cleaning', 'Map', 'Economic change', 'Comparison disasters'])
+pages = st.sidebar.radio('Pages', options=['Home', 'Data cleaning', 'Map', 'Economic change', 'Comparison disasters', 'The Big 4'])
 
 od.download('https://datahub.io/core/geo-countries/r/countries.geojson')
 countries_geojson = gpd.read_file('countries.geojson')
@@ -38,7 +38,7 @@ rampen_df = pd.read_csv('rampen_df.csv')
 
 
 
-if pages== 'Map' or pages == 'Economic change' or pages == 'Comparison disasters':
+if pages== 'Map' or pages == 'Economic change' or pages == 'Comparison disasters' or pages == 'The Big 4':
     with st.form(key='my_form'):
         commit = st.form_submit_button('Submit')
         Total_affected_mult = st.slider('Set the total affected multiplier',min_value=0.0, value=0.3 ,max_value=1.0, step=0.01)
@@ -61,19 +61,36 @@ if pages== 'Map' or pages == 'Economic change' or pages == 'Comparison disasters
 
 
 
-        quantiles = rampen_df.groupby(['Disaster Group', 'Disaster Subgroup', 'Disaster Type','Disaster Subtype'])['Intensity'].quantile([0.25, 0.75]).reset_index()
-        quantiles = quantiles.pivot(index=['Disaster Group', 'Disaster Subgroup', 'Disaster Type','Disaster Subtype'], 
+        quantiles_subtypes = rampen_df.groupby(['Disaster Group', 'Disaster Subgroup', 'Disaster Type','Disaster Subtype'])['Intensity'].quantile([0.25, 0.75]).reset_index()
+        quantiles_subtypes = quantiles_subtypes.pivot(index=['Disaster Group', 'Disaster Subgroup', 'Disaster Type','Disaster Subtype'], 
                                     columns = 'level_4', values='Intensity').reset_index()
-        test = rampen_df.merge(quantiles, left_on=['Disaster Group', 'Disaster Subgroup', 'Disaster Type','Disaster Subtype'], 
+        test = rampen_df.merge(quantiles_subtypes, left_on=['Disaster Group', 'Disaster Subgroup', 'Disaster Type','Disaster Subtype'], 
                                right_on=['Disaster Group', 'Disaster Subgroup', 'Disaster Type','Disaster Subtype'], how='left')
         test.columns = ['Year','ISO','Country','Disaster Group','Disaster Subgroup','Disaster Type',
                         'Disaster Subtype','Total Deaths','Total Affected new','Intensity','Jaar 0','Jaar 1','Jaar 2','Jaar 3',"0.25",'0.75']
-        test['Category']=0
+        test['Category Subtypes']=0
         for index, row in test.iterrows():
-            test.iloc[index, test.columns.get_loc('Category')] = 3 if row['Intensity']>row['0.75'] else (1 if row['Intensity']<row['0.25'] else 2)
-        rampen_df['Category'] = test['Category']
+            test.iloc[index, test.columns.get_loc('Category Subtypes')] = 3 if row['Intensity']>row['0.75'] else (1 if row['Intensity']<row['0.25'] else 2)
 
+        
+        
+        quantiles_types = rampen_df.groupby(['Disaster Group', 'Disaster Subgroup', 'Disaster Type'])['Intensity'].quantile([0.25, 0.75]).reset_index()
+        quantiles_types = quantiles_types.pivot(index=['Disaster Group', 'Disaster Subgroup', 'Disaster Type'], 
+                                    columns = 'level_3', values='Intensity').reset_index()
+        test2 = rampen_df.merge(quantiles_types, left_on=['Disaster Group', 'Disaster Subgroup', 'Disaster Type'], 
+                               right_on=['Disaster Group', 'Disaster Subgroup', 'Disaster Type'], how='left')
+        test2.columns = ['Year','ISO','Country','Disaster Group','Disaster Subgroup','Disaster Type', 'Disaster Subtype',
+                 'Total Deaths','Total Affected new','Intensity','Jaar 0','Jaar 1','Jaar 2','Jaar 3',"0.25",'0.75']
+        test2['Category Types']=0
+        for index, row in test2.iterrows():
+            test2.iloc[index, test2.columns.get_loc('Category Types')] = 3 if row['Intensity']>row['0.75'] else (1 if row['Intensity']<row['0.25'] else 2)
+        
+        
+        rampen_df['Category Types'] = test2['Category Types']
+        rampen_df['Category Subtypes'] = test['Category Subtypes']
         rampen_df = rampen_df.sort_values(by='Year').reset_index(drop=True)
+        
+        
         
         if pages == 'Map':
             Soort_data = ''
@@ -90,11 +107,14 @@ if pages== 'Map' or pages == 'Economic change' or pages == 'Comparison disasters
             types = np.sort(list(rampen_df['Disaster Subtype'].unique()))  
             type_names = list(rampen_df['Disaster Subtype'].unique())
             type_dict = dict(zip(types, type_names))
-            type_box=st.selectbox('Kies een subtype', types)
+            type_box=st.selectbox('Choose a subtype', types)
+            
+            Outlier_box = st.selectbox('Remove outliers', ['No', 'Yes'])
+        if pages == 'The Big 4':
             categories = ['Categorie 1', 'Categorie 2', 'Categorie 3']
             category= ['Category 1', 'Category 2', 'Category 3']
             category_dict = dict(zip(categories, category))
-            category_box = st.selectbox('Kies een Ramp categorie', categories)
+            category_box = st.selectbox('Choose a disaster category', categories)
   
                
 
@@ -186,7 +206,7 @@ if pages == 'Economic change':
 if pages == 'Comparison disasters': 
     col3, col4 = st.columns([1,1])
     data_subtypes = rampen_df[rampen_df['Disaster Subtype']==type_box].reset_index(drop=True)
-    Fig_subtypes_jaar0 = px.box(data_subtypes, x='Category', y='Jaar 0', color='Category')
+    Fig_subtypes_jaar0 = px.box(data_subtypes, x='Category Subtypes', y='Jaar 0', color='Category Subtypes')
     Fig_subtypes_jaar0.update_layout(title='<b>'+data_subtypes['Disaster Subtype'][0] + ': Jaar 0</b>')
     Fig_subtypes_jaar0.update_yaxes(title = '<b>GDP change compared to world</b>')
     Fig_subtypes_jaar0.update_xaxes(title = '<b>Category</b>')
@@ -195,7 +215,7 @@ if pages == 'Comparison disasters':
         st.plotly_chart(Fig_subtypes_jaar0)
     
     
-    Fig_subtypes_jaar1 = px.box(data_subtypes, x='Category', y='Jaar 1', color='Category')
+    Fig_subtypes_jaar1 = px.box(data_subtypes, x='Category Subtypes', y='Jaar 1', color='Category Subtypes')
     Fig_subtypes_jaar1.update_layout(title='<b>'+data_subtypes['Disaster Subtype'][0] + ': Jaar 1</b>')
     Fig_subtypes_jaar1.update_yaxes(title = '<b>GDP change compared to world</b>')
     Fig_subtypes_jaar1.update_xaxes(title = '<b>Category</b>')
@@ -204,7 +224,7 @@ if pages == 'Comparison disasters':
         st.plotly_chart(Fig_subtypes_jaar1)
     
     
-    Fig_subtypes_jaar2 = px.box(data_subtypes, x='Category', y='Jaar 2', color='Category')
+    Fig_subtypes_jaar2 = px.box(data_subtypes, x='Category Subtypes', y='Jaar 2', color='Category Subtypes')
     Fig_subtypes_jaar2.update_layout(title='<b>'+data_subtypes['Disaster Subtype'][0] + ': Jaar 2</b>')
     Fig_subtypes_jaar2.update_yaxes(title = '<b>GDP change compared to world</b>')
     Fig_subtypes_jaar2.update_xaxes(title = '<b>Category</b>')
@@ -213,7 +233,7 @@ if pages == 'Comparison disasters':
         st.plotly_chart(Fig_subtypes_jaar2)
     
     
-    Fig_subtypes_jaar3 = px.box(data_subtypes, x='Category', y='Jaar 3', color='Category')
+    Fig_subtypes_jaar3 = px.box(data_subtypes, x='Category Subtypes', y='Jaar 3', color='Category Subtypes')
     Fig_subtypes_jaar3.update_layout(title='<b>'+data_subtypes['Disaster Subtype'][0] + ': Jaar 3</b>')
     Fig_subtypes_jaar3.update_yaxes(title = '<b>GDP change compared to world</b>')
     Fig_subtypes_jaar3.update_xaxes(title = '<b>Category</b>')
@@ -223,20 +243,19 @@ if pages == 'Comparison disasters':
     
     
 
-
-    
+if pages == 'The Big 4':
     if category_dict[category_box] == 'Category 1':
-        Category_data = rampen_df[(rampen_df['Category']==1)]
+        Category_data = rampen_df[(rampen_df['Category Types']==1)]
         Category_data = Category_data[(Category_data['Disaster Type']=='Drought') | (Category_data['Disaster Type']=='Flood') | (Category_data['Disaster Type']=='Storm') | (Category_data['Disaster Type']=='Earthquake')]
         Category_data = Category_data.dropna(axis=0)
         Category_data = Category_data.sort_values(by='Disaster Type').reset_index(drop=True)
     elif category_dict[category_box] == 'Category 2':
-        Category_data = rampen_df[(rampen_df['Category']==2)]
+        Category_data = rampen_df[(rampen_df['Category Types']==2)]
         Category_data = Category_data[(Category_data['Disaster Type']=='Drought') | (Category_data['Disaster Type']=='Flood') | (Category_data['Disaster Type']=='Storm') | (Category_data['Disaster Type']=='Earthquake')]
         Category_data = Category_data.dropna(axis=0)
         Category_data = Category_data.sort_values(by='Disaster Type').reset_index(drop=True)
     elif category_dict[category_box] == 'Category 3':
-        Category_data = rampen_df[(rampen_df['Category']==3)]
+        Category_data = rampen_df[(rampen_df['Category Types']==3)]
         Category_data = Category_data[(Category_data['Disaster Type']=='Drought') | (Category_data['Disaster Type']=='Flood') | (Category_data['Disaster Type']=='Storm') | (Category_data['Disaster Type']=='Earthquake')]
         Category_data = Category_data.dropna(axis=0)
         Category_data = Category_data.sort_values(by='Disaster Type').reset_index(drop=True)
