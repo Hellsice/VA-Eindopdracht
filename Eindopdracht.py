@@ -63,10 +63,8 @@ rampen_df = rampen_df[rampen_df.Year <= 2021].reset_index(drop=True).fillna(0)',
     st.markdown('')
     st.markdown('Recalculated deaths and total affected.')
     st.code("rampen_df['Total Affected new'] = rampen_df['No Affected']+rampen_df['No Injured']+rampen_df['No Homeless']\n\
-rampen_df_controle = rampen_df.groupby(['ISO', 'Country', 'Year', 'Disaster Group', 'Disaster Subgroup', 'Disaster Type',\n\
-       'Disaster Subtype'])['Total Affected new'].sum().reset_index()\n\
-rampen_df_controle2 = rampen_df.groupby(['ISO', 'Country', 'Year', 'Disaster Group', 'Disaster Subgroup', 'Disaster Type',\n\
-       'Disaster Subtype'])['Total Deaths'].sum().reset_index()", language='python')
+rampen_df_controle = rampen_df.groupby(['ISO', 'Country', 'Year', 'Disaster Group', 'Disaster Subgroup', 'Disaster Type', 'Disaster Subtype'])['Total Affected new'].sum().reset_index()\n\
+rampen_df_controle2 = rampen_df.groupby(['ISO', 'Country', 'Year', 'Disaster Group', 'Disaster Subgroup', 'Disaster Type', 'Disaster Subtype'])['Total Deaths'].sum().reset_index()", language='python')
     st.markdown('')
     st.markdown('Determined GDP percentage change compared to the world.')
     st.code('''rampen_df.iloc[index, rampen_df.columns.get_loc('Jaar 1')] = \\
@@ -90,7 +88,7 @@ GDP[GDP['Country Code']=='WLD'][str(rampen_df['Year'][index])].values[0]''', lan
     st.markdown('Calculating intensity using the following formula:')
     st.markdown(r'''
 $$ 
-Intensity = \frac{Deaths + 0.3*Total\_affected}{Population} 
+Intensity = \frac{Deaths + 0.3*Total\_Affected}{Population} 
 $$
 ''')
     st.code('''rampen_df['Intensity'] = 0
@@ -98,12 +96,13 @@ for i in range(len(rampen_df)):
     a = Population[Population['Country Code']==rampen_df['ISO'][i]]
     if len(a) == 1:
         rampen_df['Intensity'][i] = (rampen_df['Total Deaths'][i]+Total_affected_mult*rampen_df['Total Affected new'][i])/(a[str(rampen_df['Year'][i])].values[0])''', language='python')
+    st.markdown('Removing rows where intensity is below threshold.')
     st.code('''rampen_df = rampen_df[rampen_df['Intensity'] >= Intensity_threshold].reset_index(drop=True)''', language='python')
     st.markdown('')
     st.markdown('Calculating the quantiles of Disaster types and subtypes.')
     st.code('''quantiles_subtypes = rampen_df.groupby(['Disaster Group', 'Disaster Subgroup', 'Disaster Type','Disaster Subtype'])['Intensity'].quantile([0.25, 0.75]).reset_index()
 ''', language='python')
-    st.markdown('Pivoting quantiles dataframe')
+    st.markdown('Pivoting quantiles dataframe.')
     st.code('''quantiles_subtypes = quantiles_subtypes.pivot(index=['Disaster Group', 'Disaster Subgroup', 'Disaster Type','Disaster Subtype'], columns = 'level_4', values='Intensity').reset_index()''', language='python')
     st.markdown('Merging dataframes and fixing column names.')
     st.code('''test2 = rampen_df.merge(quantiles_types, left_on=['Disaster Group', 'Disaster Subgroup', 'Disaster Type'], 
@@ -436,6 +435,11 @@ if pages == 'Comparison disasters':
     st.markdown('Selected data is filtered based on selectbox and NaN values are replaced with 0.')
     st.code("""data_subtypes = rampen_df[rampen_df['Disaster Subtype']==type_box].reset_index(drop=True)
 data_subtypes = data_subtypes.fillna(0)""", language='python')
+    st.markdown("Made separate dataframe based on 0's in specific columns")
+    st.code("""data_subtypes_jaar_0 = data_subtypes[data_subtypes['Jaar 0']!=0].sort_values(by='Category Subtypes')
+data_subtypes_jaar_1 = data_subtypes[data_subtypes['Jaar 1']!=0].sort_values(by='Category Subtypes')
+data_subtypes_jaar_2 = data_subtypes[data_subtypes['Jaar 2']!=0].sort_values(by='Category Subtypes')
+data_subtypes_jaar_3 = data_subtypes[data_subtypes['Jaar 3']!=0].sort_values(by='Category Subtypes')""", language='python')
 
 if pages == 'The Big 4':
     if category_dict[category_box] == 'Category 1':
@@ -474,7 +478,21 @@ if pages == 'The Big 4':
     st.title('The Big 4 specific code')
     st.markdown('Added a page specific selectbox to the submit button code with an if statement.')
     st.code("""if pages == 'The Big 4':
-            categories = ['Categorie 1', 'Categorie 2', 'Categorie 3']
-            category= ['Category 1', 'Category 2', 'Category 3']
-            category_dict = dict(zip(categories, category))
-            category_box = st.selectbox('Choose a disaster category', categories)""", language='python')
+    categories = ['Categorie 1', 'Categorie 2', 'Categorie 3']
+    category= ['Category 1', 'Category 2', 'Category 3']
+    category_dict = dict(zip(categories, category))
+    category_box = st.selectbox('Choose a disaster category', categories)""", language='python')
+    st.markdown('Filtered on category and disaster type and dropped rows with NaN values.')
+    st.code("""Category_data = rampen_df[(rampen_df['Category Types']==1)]
+Category_data = Category_data[(Category_data['Disaster Type']=='Drought') | (Category_data['Disaster Type']=='Flood') | (Category_data['Disaster Type']=='Storm') | (Category_data['Disaster Type']=='Earthquake')]
+Category_data = Category_data.dropna(axis=0)
+Category_data = Category_data.sort_values(by='Disaster Type').reset_index(drop=True)""", language='python')
+    st.markdown('Remove rows with 0 values after making each chart')
+    st.code("""Category_data = Category_data[Category_data['Jaar 0']!=0]
+fig_a2 = px.box(Category_data, x='Disaster Type', y='Jaar 0', color='Disaster Type')
+Category_data = Category_data[Category_data['Jaar 1']!=0]
+fig_b2 = px.box(Category_data, x='Disaster Type', y='Jaar 1', color='Disaster Type')
+Category_data = Category_data[Category_data['Jaar 2']!=0]
+fig_c2 = px.box(Category_data, x='Disaster Type', y='Jaar 2', color='Disaster Type')
+Category_data = Category_data[Category_data['Jaar 3']!=0]
+fig_d2 = px.box(Category_data, x='Disaster Type', y='Jaar 3', color='Disaster Type')""", language='python')
