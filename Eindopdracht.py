@@ -52,7 +52,7 @@ rampen_df = pd.read_csv('rampen_df.csv')
 
 # In[6]:
 
-if pages== 'Map' or 'Economic change' or 'Comparison disasters':
+if pages== 'Map' or pages == 'Economic change' or pages == 'Comparison disasters':
     with st.form(key='my_form'):
         Total_affected_mult = st.slider('Set the total affected multiplier',min_value=0.0, value=0.3 ,max_value=1.0, step=0.01)
         Intensity_threshold = st.number_input('Set the intensity threshold (default: 0.00001)', min_value=0.0, value=0.00001, max_value=1.0, step=0.00001)
